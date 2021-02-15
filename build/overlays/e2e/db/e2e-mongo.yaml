@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: mongo
+  name: mongo-deployment
+  namespace: apolicy 
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: mongo
+  template:
+    metadata:
+      labels:
+        component: mongo
+    spec:
+      serviceAccountName: sa-apolicy
+      volumes:
+        - name: mongo-storage
+          persistentVolumeClaim:
+            claimName: e2e-database-persistent-volume-claim
+      containers:
+        - name: mongo
+          image: gcr.io/staging-286309/e2e-mongo
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongo-storage
+              mountPath: /var/lib/mongo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-service
+  namespace: apolicy
+spec:
+  type: ClusterIP
+  selector:
+    component: mongo
+  ports:
+    - port: 27017
+      targetPort: 27017
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongo-init
+  namespace: apolicy
+spec:
+  template:
+    spec:
+      containers:
+      - name: mongo-init
+        image: gcr.io/staging-286309/e2e-mongo-init-v10
+        command: ["sh", "-c", "rs-e2e.sh"]
+      restartPolicy: OnFailure
+  backoffLimit: 4

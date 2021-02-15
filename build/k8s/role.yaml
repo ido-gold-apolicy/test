@@ -1,0 +1,139 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-apolicy
+  namespace: apolicy
+  labels:
+    app: apolicy-krm
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  namespace: apolicy  
+  name: apolicy-reader
+  labels:
+    app: apolicy-krm
+rules:
+  - apiGroups:
+      - ''
+      - 'rbac.authorization.k8s.io'
+      - 'extensions'
+      - 'apps'
+      - 'batch'
+      - 'networking.k8s.io'
+    resources: 
+      - 'pods'
+      - 'pods/log'
+      - 'namespaces'
+      - 'deployments'
+      - 'daemonsets'
+      - 'statefulsets'
+      - 'jobs'
+      - 'cronjobs'
+      - 'clusterroles'
+      - 'clusterrolebindings'
+      - 'roles'
+      - 'rolebindings'
+      - 'services'
+      - 'serviceaccounts'
+      - 'nodes'
+      - 'ingresses'
+    verbs:
+      - 'get'
+      - 'list'
+      - 'watch'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  namespace: apolicy
+  name: croleb-apolicy-krm
+  labels:
+    app: apolicy-krm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: apolicy-reader
+subjects:
+  - kind: ServiceAccount
+    name: sa-apolicy
+    namespace: apolicy
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: apolicy-manager-admin
+  namespace: apolicy
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: apolicy-manager-admin-role
+rules:
+- apiGroups:
+  - constraints.gatekeeper.sh
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - templates.gatekeeper.sh
+  resources:
+  - constrainttemplates
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: apolicy-manager-admin-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: apolicy-manager-admin-role
+subjects:
+- kind: ServiceAccount
+  name: apolicy-manager-admin
+  namespace: apolicy
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: apolicy-analyzer-sa
+  namespace: apolicy
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  namespace: apolicy
+  name: analyzer-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: analyzer-reader-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: analyzer-reader
+subjects:
+- kind: ServiceAccount
+  name: apolicy-analyzer-sa
+  namespace: apolicy

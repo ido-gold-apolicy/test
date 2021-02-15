@@ -1,0 +1,51 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+bases:
+  - "../../k8s/"
+
+resources:
+  - "e2e-collector.yaml"
+  - "e2e-workloads.yaml"
+  - "e2e-access.yaml"
+  - "e2e-ingress.yaml"
+  - "e2e-remediation.yaml"
+  - "e2e-volume.yaml"
+
+
+images:
+- name: local/apolicy-kong
+  newName: gcr.io/staging-286309/e2e-apolicy-kong
+- name: local/authentication
+  newName: gcr.io/staging-286309/e2e-authentication
+- name: local/configuration
+  newName: gcr.io/staging-286309/e2e-configuration
+- name: local/scheduler
+  newName: gcr.io/staging-286309/e2e-scheduler
+- name: local/workload
+  newName: gcr.io/staging-286309/e2e-workload
+- name: local/access
+  newName: gcr.io/staging-286309/e2e-access
+- name: local/collector-handler
+  newName: gcr.io/staging-286309/e2e-collector-handler
+- name: local/apolicy-app
+  newName: gcr.io/staging-286309/e2e-app
+- name: local/login-app
+  newName: gcr.io/staging-286309/e2e-login-app
+- name: local/hosted-app
+  newName: gcr.io/staging-286309/e2e-hosted-app
+- name: local/e2e-collector
+  newName: gcr.io/staging-286309/e2e-collector
+- name: local/policy
+  newName: gcr.io/staging-286309/e2e-policy
+- name: local/compliance
+  newName: gcr.io/staging-286309/e2e-compliance
+- name: local/gitprovider
+  newName: gcr.io/staging-286309/e2e-gitprovider
+- name: local/clusteranalysis
+  newName: gcr.io/staging-286309/e2e-clusteranalysis
+- name: local/node-analyzer
+  newName: gcr.io/staging-286309/e2e-node-analyzer
+
+       
+
+

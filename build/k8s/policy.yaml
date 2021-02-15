@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: policy
+  name: policy-deployment 
+  namespace: apolicy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: policy
+  template:
+    metadata:
+      labels:
+        app: policy
+    spec:
+      serviceAccountName: sa-apolicy
+      containers:
+        - name : policy
+          image: local/policy
+          ports:
+            - containerPort: 8086
+          envFrom:
+            - secretRef:
+                name: apolicy-secret   
+          env:
+            - name: DB_NAME
+              value: policy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: policy-service
+  namespace: apolicy
+spec:
+  type: NodePort
+  selector:
+    app: policy
+  ports:
+    - port: 8086
+      targetPort: 8086

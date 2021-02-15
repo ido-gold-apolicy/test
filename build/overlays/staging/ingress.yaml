@@ -1,0 +1,142 @@
+apiVersion: configuration.konghq.com/v1
+kind: KongIngress
+metadata:
+    name: https-only
+    namespace: apolicy
+route:
+  protocols:
+  - https
+  https_redirect_status_code: 302
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: apolicy-authnz-ingress
+  namespace: apolicy
+  annotations:
+    konghq.com/plugins: apolicy-jwt-plugin,apolicy-opa-plugin,apolicy-ratelimit
+    konghq.com/override: "https-only"
+    kubernetes.io/ingress.class: "kong"
+spec:
+  tls:
+  - hosts:
+      - staging.apolicy.io
+    secretName: my-apolicy-cert
+  rules:
+  - host: staging.apolicy.io
+    http:
+      paths:
+      - path: /config
+        backend:
+          serviceName: configuration-service
+          servicePort: 8080
+      - path: /workloads
+        backend:
+          serviceName: workload-service
+          servicePort: 8081
+      - path: /access
+        backend:
+          serviceName: access-service
+          servicePort: 8082
+      - path: /tasks
+        backend:
+          serviceName: scheduler-service
+          servicePort: 8083
+      - path: /users
+        backend:
+          serviceName: authentication-service
+          servicePort: 8084
+      - path: /policy
+        backend:
+          serviceName: policy-service
+          servicePort: 8086
+      - path: /compliance
+        backend:
+          serviceName: compliance-service
+          servicePort: 8087
+      - path: /gitprovider
+        backend:
+          serviceName: gitprovider-service
+          servicePort: 8088
+      - path: /remediation
+        backend:
+          serviceName: remediation-service
+          servicePort: 8089
+      - path: /clusteranalysis
+        backend:
+          serviceName: clusteranalysis-service
+          servicePort: 8090
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: apolicy-anonymous-ingress
+  namespace: apolicy
+  annotations:
+    konghq.com/plugins: apolicy-anonymous-ratelimit
+    konghq.com/override: "https-only"
+    kubernetes.io/ingress.class: "kong"
+spec:
+  tls:
+  - hosts:
+      - staging.apolicy.io
+    secretName: my-apolicy-cert
+  rules:
+  - host: staging.apolicy.io
+    http:
+      paths:
+      - path: /auth
+        backend:
+            serviceName: login-app-service
+            servicePort: 80
+      - path: /
+        backend:
+            serviceName: login-app-service
+            servicePort: 80
+      - path: /app
+        backend:
+            serviceName: apolicy-app-service
+            servicePort: 80
+      - path: /hosted
+        backend:
+            serviceName: hosted-app-service
+            servicePort: 80
+      - path: /login
+        backend:
+          serviceName: authentication-service
+          servicePort: 8084
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: apolicy-authenticated-only-ingress
+  namespace: apolicy
+  annotations:
+    konghq.com/plugins: apolicy-jwt-plugin,apolicy-ratelimit
+    konghq.com/override: "https-only"
+    kubernetes.io/ingress.class: "kong"
+spec:
+  tls:
+  - hosts:
+      - staging.apolicy.io
+    secretName: my-apolicy-cert
+  rules:
+  - host: staging.apolicy.io
+    http:
+      paths:
+      - path: /login/refresh
+        backend:
+          serviceName: authentication-service
+          servicePort: 8084
+      - path: /logout
+        backend:
+          serviceName: authentication-service
+          servicePort: 8084
+      - path: /users/current-user
+        backend:
+          serviceName: authentication-service
+          servicePort: 8084
+      - path: /config/cluster-exists
+        backend:
+            serviceName: configuration-service
+            servicePort: 8080

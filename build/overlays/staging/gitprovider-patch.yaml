@@ -1,0 +1,12 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitprovider-deployment
+spec:
+  template:
+    spec:
+      containers:
+        - name: gitprovider
+          env:
+            - name: WEBHOOKS_URL
+              value: https://staging.apolicy.io/gitprovider/hook

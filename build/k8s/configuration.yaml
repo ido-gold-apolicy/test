@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: configuration
+  name: configuration-deployment
+  namespace: apolicy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: configuration
+  template:
+    metadata:
+      labels:
+        app: configuration
+    spec:
+      serviceAccountName: sa-apolicy
+      containers:
+        - name : configuration
+          image: local/configuration
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: apolicy-secret
+          env:
+            - name: DB_NAME
+              value: config
+            - name: PROVISION_TENANT_SUBSCRIPTION
+              value: provision-tenant-sub
+            - name: VALIDATION_EXCLUDE_PATTERNS
+              value: TenantRepository.*,PolicyRepository.*,RecommendationRepository.*,ClusterRepository.*
+            - name: ERROR_EMAIL_RECIPIENT
+              value: contact-us@apolicy.io
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: configuration-service
+  namespace: apolicy
+spec:
+  type: NodePort
+  selector:
+    app: configuration
+  ports:
+    - port: 8080
+      targetPort: 8080

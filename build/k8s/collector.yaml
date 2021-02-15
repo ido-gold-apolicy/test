@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: collector
+  name: collector-deployment 
+  namespace: apolicy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: collector
+  template:
+    metadata:
+      labels:
+        component: collector
+    spec:
+      serviceAccountName: sa-apolicy
+      containers:
+        - name : collector
+          image: local/collector 
+          envFrom:
+            - secretRef:
+                name: apolicy-secret
+          env:
+            - name: INCLUDED_NAMESPACES
+              value: 
+            - name: EXCLUDED_NAMESPACES
+              value: 
+            - name: INCLUDED_WORKLOADS
+              value:
+            - name: EXCLUDED_WORKLOADS
+              value:
+            - name: RISK_WEIGHT_WORKLOADS
+              value:
+            - name: RISK_WEIGHT_ACCESS
+              value:

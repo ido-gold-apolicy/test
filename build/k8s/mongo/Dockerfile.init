@@ -1,0 +1,11 @@
+FROM mongo:4.2.6 
+
+RUN apt-get update -y 
+RUN apt-get install netcat -y 
+
+ADD rs.sh /usr/local/bin/
+ADD rs-e2e.sh /usr/local/bin/
+
+# Remove line endings that can mess up the script
+RUN sed -i 's/\r$//' /usr/local/bin/rs.sh && chmod +x /usr/local/bin/rs.sh
+RUN sed -i 's/\r$//' /usr/local/bin/rs-e2e.sh && chmod +x /usr/local/bin/rs-e2e.sh

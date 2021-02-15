@@ -1,0 +1,114 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    konghq.com/override: https-only
+    konghq.com/plugins: apolicy-anonymous-ratelimit
+  name: apolicy-anonymous-ingress
+  namespace: apolicy
+spec:
+  rules:
+  - http:
+      paths:
+      - backend:
+          serviceName: login-app-service
+          servicePort: 80
+        path: /auth
+      - backend:
+          serviceName: login-app-service
+          servicePort: 80
+        path: /
+      - backend:
+          serviceName: apolicy-app-service
+          servicePort: 80
+        path: /app
+      - backend:
+          serviceName: hosted-app-service
+          servicePort: 80
+        path: /hosted
+      - backend:
+          serviceName: authentication-service
+          servicePort: 8084
+        path: /login
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    konghq.com/override: https-only
+    konghq.com/plugins: apolicy-jwt-plugin,apolicy-ratelimit
+  name: apolicy-authenticated-only-ingress
+  namespace: apolicy
+spec:
+  rules:
+  - http:
+      paths:
+      - backend:
+          serviceName: authentication-service
+          servicePort: 8084
+        path: /login/refresh
+      - backend:
+          serviceName: authentication-service
+          servicePort: 8084
+        path: /logout
+      - backend:
+          serviceName: authentication-service
+          servicePort: 8084
+        path: /users/current-user
+      - backend:
+          serviceName: configuration-service
+          servicePort: 8080
+        path: /config/cluster-exists
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    konghq.com/override: https-only
+    konghq.com/plugins: apolicy-jwt-plugin,apolicy-opa-plugin,apolicy-ratelimit
+  name: apolicy-authnz-ingress
+  namespace: apolicy
+spec:
+  rules:
+  - http:
+      paths:
+      - backend:
+          serviceName: configuration-service
+          servicePort: 8080
+        path: /config
+      - backend:
+          serviceName: workload-service
+          servicePort: 8081
+        path: /workloads
+      - backend:
+          serviceName: access-service
+          servicePort: 8082
+        path: /access
+      - backend:
+          serviceName: scheduler-service
+          servicePort: 8083
+        path: /tasks
+      - backend:
+          serviceName: authentication-service
+          servicePort: 8084
+        path: /users
+      - path: /policy
+        backend:
+          serviceName: policy-service
+          servicePort: 8086  
+      - path: /compliance
+        backend:
+          serviceName: compliance-service
+          servicePort: 8087
+      - path: /gitprovider
+        backend:
+          serviceName: gitprovider-service
+          servicePort: 8088
+      - path: /remediation
+        backend:
+          serviceName: remediation-service
+          servicePort: 8089
+      - path: /clusteranalysis
+        backend:
+          serviceName: clusteranalysis-service
+          servicePort: 8090

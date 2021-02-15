@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: apolicy
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: apolicy-analyzer-sa
+  namespace: apolicy
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  namespace: apolicy
+  name: analyzer-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: analyzer-reader-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: analyzer-reader
+subjects:
+- kind: ServiceAccount
+  name: apolicy-analyzer-sa
+  namespace: apolicy
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-analyzer
+  namespace: apolicy
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: node-analyzer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: node-analyzer
+    spec:
+      serviceAccountName: apolicy-analyzer-sa
+      hostPID: true
+      tolerations:
+      # this toleration is to have the daemonset runnable on master nodes
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      containers:
+        - name: node-analyzer
+          image: apolicyio/node-analyzer-e2e
+          envFrom:
+            - secretRef:
+                name: apolicy-cluster-secret
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: var-lib-etcd
+              mountPath: /var/lib/etcd
+              readOnly: true
+            - name: var-lib-kubelet
+              mountPath: /var/lib/kubelet
+              readOnly: true
+            - name: etc-systemd
+              mountPath: /etc/systemd
+              readOnly: true
+            - name: etc-kubernetes
+              mountPath: /etc/kubernetes
+              readOnly: true
+            - name: etc-cni
+              mountPath: /etc/cni
+              readOnly: true
+      volumes:
+        - name: var-lib-etcd
+          hostPath:
+            path: "/var/lib/etcd"
+        - name: var-lib-kubelet
+          hostPath:
+            path: "/var/lib/kubelet"
+        - name: etc-systemd
+          hostPath:
+            path: "/etc/systemd"
+        - name: etc-kubernetes
+          hostPath:
+            path: "/etc/kubernetes"
+        - name: etc-cni
+          hostPath:
+            path: "/etc/cni"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: apolicy-cluster-secret
+  namespace: apolicy
+type: Opaque
+stringData:
+  PUBSUB_EMULATOR_HOST: host.docker.internal:8262
+  GOOGLE_CLOUD_PROJECT: "dev-proj"
+  GCP_CREDENTIALS: "ewogICJ0eXBlIjogInNlcnZpY2VfYWNjb3VudCIsCiAgInByb2plY3RfaWQiOiAicHVic3ViLXRlc3QtMjc3NjEwIiwKICAicHJpdmF0ZV9rZXlfaWQiOiAiNzQwMWVjNTYxNTJjNzA4Yzk5NzQ2NTEwZDNhNzdhYzEwNzMzMzhmNCIsCiAgInByaXZhdGVfa2V5IjogIi0tLS0tQkVHSU4gUFJJVkFURSBLRVktLS0tLVxuTUlJRXZBSUJBREFOQmdrcWhraUc5dzBCQVFFRkFBU0NCS1l3Z2dTaUFnRUFBb0lCQVFDSXl6TWhPcHg3bzdOeVxuWWJhR1lRdDJUYVJxVTI4RjFZdEpSR0t4bTQvSzUyWWFhMVM3L1FsbXVwaDdwWkxOT3BGaVJpc1ZKcnRDdUt6cFxud1NyZGV5VThMR202VWdKc0ZSZEJiOGIwZEVzUFhReTIvMCtYL3QzdFNXMjlldkZNbElyZFVCQjVsQWFxeDJGY1xuTGZtMDNhZk1Fc3p6RWprWCtVSFNxclhEZDZsSUlsUFIrYk0zemVUZExEUkUwS1EwZllnNFRsVm5mWmh3aTJtM1xuWFFWeEkyd0s0ZXNKRGNzNG4xVzJsY2hvWGhmZTcyMXNEM0hVYnRPVDRaQTlvVGNCUlA2VmduV3k1UjQzdUJLVVxuWFh0ZTZmeHl5b2xsc1RWNEt2Q1hRMWN6ZjNqcmlha25pekZZcUtwZzROa2QxS1JudFNFdXhjTml4cWJibWtXMFxuYzA4WEdaS3ZBZ01CQUFFQ2dnRUFBZFRpcnQrM2g2cEY5VktjbklrQkc4am5XaXNhMGZPdGhVSWVwaTBrakQxelxuN3dlZjMxS0FoVGtiWUpCemVqNytBbGhaTEZQVDd3MUU5MjVJTWlYN2RpWk1GaHdSL3p0N0Q3dTg2TG9ENVVWRVxuTGRFV1VqMHQ0SWI2cXE1U084bkRZRG81dGo4R3BkTzhtSHpmR281Yk9FN0tJcmtNUGFkdk83QmdkYWtOQWJPNlxuODNKR24rR0JHRWxZemRVTzlKMUoxQUg1S0JvK3FFUEVYSTRtaUVnNm9GQjhJT1ZSV0pkS2tSZGlCUHZCa3MrS1xuWGpkbWdTUEdwSC9zUW9sZ0x0aUErcURSNWRKR0VhckltK3Y5YmJXcWNGS2lUVFpsMHpMV1QvQjNSWnorYkg3b1xuaWJZMFVOallERkM5Ujd5eFdQTXFiUDBQclFlZCswSlhBL0RCZTh1akRRS0JnUUMrMG1PL3BkSXpQTDV6ZkpJR1xuRTE4U2NUOG1aZ3JvenpQS1oycmxKeEl4VnoxUmxKRlpkT25wWHZkS081YkZPbk5Yb0srZ04razFQN1B4Z01LdFxuaEhpT0h3NzF1VU0zVldoUEdlZXMxejFEeVJRNG9sSjdzbG02OEZ6dHY1NVlJaDRySzdYRVRZbmp3MURQSHBpZVxubkpBRUpXaG5xbnBpdU12dXI5Ty9DMWtvNVFLQmdRQzNoSTFURVpTM3F4Z2FBSEc3MWhJNVRTdTUyY3puTkJ2SFxuZW1QZzJ5RnlqbzlSdU9vUk9kS05EUmhDMkdMTmNkVytEVi9tZFg0K0h1cThnY0MzT2NwTmFtY1g3ZW16ampBc1xuNGJUZHBHSWpscFVGWk1udHJJamEvSmIvWWdHQUN0RngxM0VQWVcyVFhuYWhSUjBTNFZBdVdaaXQwVTFJc2Fud1xuUHBtYXJldzRBd0tCZ0FYOGc3U1hkeWkwVnlVNFd6eGxqeTM4NzRZODNVckFkVmQ4TnhaSlM0RFF3OU96WFh2NFxuOXYyalJRN0hIOHZBTWE0bUZGeHFaSjZQQ1E0aWcvajlsdXFlZnRHbXBqMHVLTCtTaUhvYnBvaGgzb2lJVHg0aVxuVWo1VEhCYzVVN1pnRzZJdkZOeTdzZis3T09YR2gvTXg1aks3R2JObTNjQUxIQnE0MldPODcyY2hBb0dBQ255ZlxubXN5WlkvbDU4aHB1WlY1eFFpYi94YW9GaEh5OHphUlh5c1NhMzdIM3pLSzFkWENKY0pmNzkrM25qM2Zlei9KeFxudFhpblV5TnZKSUNCbzdiQXNiWFAyRlUzRXBTZ2VpQVh0c2FxK1ArazJsOE5EdkRhRFRGNzYzSU5SZVRZWFJvRFxua3U1dFZZdURXZW5hSkhjTm51aHR5aGo0d3B1c2ExY1liZmRjVlVNQ2dZQXY3SnN2Y0VuVUMyaEFBRE5pWXZ1Wlxuai9ZNmF2Q2lUR056Y0VlRTdHZU9FODlSN1RxUFdMM1ArYzMzdVFTRFVRbUMyUEhhKzdBWWJ5ZW04ZytTRnNqa1xuWXNLR2dURHVqT3BHaGk5YWJEaHVOVTFKMndkVk1jRkFQU0RnMzRadkVoSC9qTU1NalF3c2lYaWtIdWd4ZzFLSFxuZ2xQVGRsM3JDa1JJd05zWTRnazJVUT09XG4tLS0tLUVORCBQUklWQVRFIEtFWS0tLS0tXG4iLAogICJjbGllbnRfZW1haWwiOiAicHVic3ViLWFkbWluQHB1YnN1Yi10ZXN0LTI3NzYxMC5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsCiAgImNsaWVudF9pZCI6ICIxMDQ4OTkyNjExMDkxMzQ2ODgyMDciLAogICJhdXRoX3VyaSI6ICJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20vby9vYXV0aDIvYXV0aCIsCiAgInRva2VuX3VyaSI6ICJodHRwczovL29hdXRoMi5nb29nbGVhcGlzLmNvbS90b2tlbiIsCiAgImF1dGhfcHJvdmlkZXJfeDUwOV9jZXJ0X3VybCI6ICJodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9vYXV0aDIvdjEvY2VydHMiLAogICJjbGllbnRfeDUwOV9jZXJ0X3VybCI6ICJodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9yb2JvdC92MS9tZXRhZGF0YS94NTA5L3B1YnN1Yi1hZG1pbiU0MHB1YnN1Yi10ZXN0LTI3NzYxMC5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIKfQo="
+  PRIVATE_KEY: "LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBcE5OZzlCQmJNSWEya3kzRmcybW9qa2pjUU8xa21PVGxWQ0ZVK2d3S0IyZmorbTNBCmp2Wmo0M3FJbHM5djFrbkdsWHJQeFJVVUQrTm80WW1iV21PR3dyV3BHMDZ3SlpkUnRwaEtGWHRzR3JjUi9WMnYKRy9CNTNTV0VYUWVDdEJvNHN5bFVBVkhUUHBzbE9DSUdpb3FBNVdsTmZEUVVrZXRBUngwN2V1eVI1c3R1NWRwYQo0eGdYTkZFSGQ3TU90UVM2bkRHdVJwY0psTkxjeUxjam0wbHdUTE45bU5JcTNKWVBSZVJnR0lXOGlCMUNjV3FGCnFNQldvaWY5bDQzZnVEdGZCVHlVa1BiSzdnRGp2THp1dzF5aFI2UWcrVis2NEQ4Z2g0Z1V2Mm1ud1BpZGZtdUMKeDlPU0RUSFgvVVpQZTJCb3VnUW5YZHVMQkN0T2k0ZzRQL1lyVXdJREFRQUJBb0lCQUNIc3crcllKdnpBN1hregpsWkNyd1o2dmptM3FycWJ0amVvWUJqYUZIZGRTWWRFY24rS05BaGhERXpQL05DU21BTEtwbVhRV0Y1QUJuWWUyClcveHB1Y1gvdi9PMzZYZURRclZUZVFRYzZDNURlZmR0UGVxQlA0UHVBZVZuODFZQWc2VVVuNDY1K2NITUN3Z1gKc01MNUtQaVBDUHpFZDJ0bFFWQ2h5cWxOWWVaZnFqZm1rQ2ZzWEppa1pPOGNhbE42bytDb1pGRTlneTd3eXY5WAo3YldXTXVJVDkvblRROFEzYzdnN1BhVEtZckd2dmdTRkJrVFltL0prWTZrSUF4VXp4WEtqVGlWcGdNK0NhZWpyCkZObkxjaTVTcCtKbEQ0elRTdjc0cFdQcHFMSjJMZFE1dUlpM005TDZYVmMvKzd0R2NXZE5sNnhudTEzdUZ1WVYKOFBCcVFvRUNnWUVBMHV2YXhabHZuWlhxUHRFbXNjVHh1REpaMVJROUl5eG1sMHhSK2ZVWEM0cnZ6aDlYY3Y4LwpCTWIzYjU2UHdmVWlMN0dLdDRWZTRPZDc5SnFNbk5yMTdsaDNLOXMwQ2Q4L3FYUm5uSnhScnRqdmhsckRiZU1vCkEzRyt4ajlUTFpQV1hWUGt3bVJUcnpDVTBMQjJSVG1aOWZCdWEwSzBtcEZwNGdpSzErdEFPMEVDZ1lFQXlBMSsKVFJESjlrNlVFd2xUQ2paOEg4bFJpZCswRHZtbGRHRUhtUm1Iem5yL0pOSnlGejIxVTdoNENOenpwM3czbzVhQQpIcmthbEZLSDcranB1Y3hPcTVoYTR5QlA4d3ZzT1k0WklDOUdGWkRlcC8rWFl1a3ZWVjYvQ0U2NVZxcFdPaCtRCnZSMjRpNmNJb1ZFNmZZdkV6YWsxTVNWa2pDdzBQeUdGQTc5VDVaTUNnWUFaK2Eva20rUFNEVzllc3hWSDJWQkgKZGZQNE9OamFweEl2V2RmU3A2dGg0WWRzNUJFNStWTkNmRnBtcGFsZ29wYkdOdUExZjdoU2pFK0lyU3ZaK1dGRwpMQ0RwQnNMZTRGNlB1T1UxdFU2ZDhOdDJ1V0ROL0thbDNmRTNxdjdNWXlPSU5OZThWT3kxYTQ4NE1ETXdqVXAzCnJsZDY0Q2tyeS9LMVFvWU8xMHIrd1FLQmdRQ3p2MVA5WUpsbW93SHUvTkRNKzFtWm9lU09raDZSMmdPc3hzWHgKN1B1V0xmTjBIVloveFdWWVhRWVZTSm53b2U3SUlLRHJlZndFeXdieksvNWRmOUlyNGcrL3hiZXdOTVZDallmTAo0RTREY0pCdXVIdElWeWE5ZVEwQ0pPSG9tZEl5RlV5U2I5THlQOW5FUUZ6aWt5UDRlaEdlSCsvdzlvTFhPb0h1CmRRbW4yd0tCZ0dES29ENmYvVmdKbTV5Y0NNN1Z2Rkoyay9tZyt4RGh3NDhFWnpIL2JTU3l3dTY3WUlkY1F1NUUKVDdnT2QvTi9jcVFIcTg4WHMxZ0l0NFM0R3Y1bHk0RCsyWWNZMytuWDY3RkhrWFpGbGlhUUFrMzFJcmFkSC9USQo2OU9pczZYRURFZVBZeGgzcjRjdjhCanBZQktHV09ZclU2UW1ySUp4c1lVSmpPbG9SR3dmCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg=="
+  CLUSTER_ID: "00000000-0000-0000-0000-000000000001"

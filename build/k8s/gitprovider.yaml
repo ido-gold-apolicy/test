@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: gitprovider
+  name: gitprovider-deployment
+  namespace: apolicy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitprovider
+  template:
+    metadata:
+      labels:
+        app: gitprovider
+    spec:
+      serviceAccountName: sa-apolicy
+      containers:
+        - name : gitprovider
+          image: local/gitprovider
+          ports:
+            - containerPort: 8088
+          volumeMounts:
+          - mountPath: /git
+            name: nfs-server-volume
+          envFrom:
+            - secretRef:
+                name: apolicy-secret
+          env:
+            - name: DB_NAME
+              value: gitprovider
+            - name: GITHUB_APP_ID
+              valueFrom:
+                secretKeyRef:
+                  name: apolicy-gitprovider-secret
+                  key: github_app_id
+            - name: GITHUB_APP_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: apolicy-gitprovider-secret
+                  key: github_app_name
+            - name: GITHUB_APP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: apolicy-gitprovider-secret
+                  key: github_secret
+            - name: GITHUB_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: apolicy-gitprovider-secret
+                  key: github_private_key
+            - name: VALIDATION_EXCLUDE_PATTERNS
+              value: ""
+            - name: VOLUME_BASE_DIR_PATH
+              value: /git
+            - name: PR_SCAN_SUPPORTED_EXTENSIONS
+              value: (?i)^.*\.(tf\.json|tfvars|ya?ml|tf|tpl)$
+            - name: WEBHOOKS_URL
+              value: https://smee.io/uJ1ZCtEZrA15KwH1
+            
+      volumes:
+      - name: nfs-server-volume
+        persistentVolumeClaim:
+          claimName: nfs-server
+          readOnly: false    
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitprovider-service
+  namespace: apolicy
+spec:
+  type: NodePort
+  selector:
+    app: gitprovider
+  ports:
+    - port: 8088
+      targetPort: 8088

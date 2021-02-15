@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: compliance
+  name: compliance-deployment 
+  namespace: apolicy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: compliance
+  template:
+    metadata:
+      labels:
+        app: compliance
+    spec:
+      serviceAccountName: sa-apolicy
+      containers:
+        - name : compliance
+          image: local/compliance
+          ports:
+            - containerPort: 8087
+          envFrom:
+            - secretRef:
+                name: apolicy-secret   
+          env:
+            - name: DB_NAME
+              value: compliance
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: compliance-service
+  namespace: apolicy
+spec:
+  type: NodePort
+  selector:
+    app: compliance
+  ports:
+    - port: 8087
+      targetPort: 8087

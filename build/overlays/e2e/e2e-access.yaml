@@ -1,0 +1,843 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: pod-reader
+rules:
+  - apiGroups:
+      - 'rbac.authorization.k8s.io'
+    resources:
+      - 'pods'
+    verbs:
+      - 'get'
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-e2e
+  namespace: e2e
+  labels:
+    app: apolicy-krm
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  namespace: ns-risky
+  name: apolicy-reader-test
+  labels:
+    app: apolicy-krm
+rules:
+  - apiGroups:
+      - ''
+      - 'rbac.authorization.k8s.io'
+      - 'extensions'
+      - 'apps'
+      - 'batch'
+      - 'networking.k8s.io'
+    resources:
+      - 'pods'
+      - 'pods/log'
+      - 'namespaces'
+      - 'deployments'
+      - 'daemonsets'
+      - 'statefulsets'
+      - 'jobs'
+      - 'cronjobs'
+      - 'clusterroles'
+      - 'clusterrolebindings'
+      - 'roles'
+      - 'rolebindings'
+      - 'services'
+      - 'serviceaccounts'
+      - 'nodes'
+      - 'ingresses'
+    verbs:
+      - 'get'
+      - 'list'
+      - 'watch'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: croleb-apolicy-krm-test
+  namespace: ns-risky
+  labels:
+    app: apolicy-krm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: apolicy-reader-test
+subjects:
+  - kind: ServiceAccount
+    name: sa-e2e
+    namespace: e2e
+---
+apiVersion: rbac.authorization.k8s.io/v1
+# This role binding allows system:serviceaccounts:ns-risky to read pods in the "default" namespace.
+# You need to already have a Role named "pod-reader" in that namespace.
+kind: RoleBinding
+metadata:
+  name: sa-read-pods
+  namespace: default
+subjects:
+- kind: Group
+  name: system:serviceaccounts:ns-risky
+  namespace: ns-risky
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  # "roleRef" specifies the binding to a Role / ClusterRole
+  kind: Role #this must be Role or ClusterRole
+  name: pod-reader # this must match the name of the Role or ClusterRole you wish to bind to
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+# This role binding allows "system:serviceaccounts:apolicy" to read pods in the "default" namespace.
+# You need to already have a Role named "pod-reader" in that namespace.
+kind: RoleBinding
+metadata:
+  name: read-pods-apolicy
+  namespace: default
+subjects:
+- kind: Group
+  name: system:serviceaccounts:ns-risky
+  namespace: ns-risky
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  # "roleRef" specifies the binding to a Role / ClusterRole
+  kind: Role #this must be Role or ClusterRole
+  name: pod-reader # this must match the name of the Role or ClusterRole you wish to bind to
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+# This role binding allows "paul.m@theband.io" and thegroup "admins@theband.io" to read pods in the "default" namespace.
+# You need to already have a Role named "pod-reader" in that namespace.
+kind: RoleBinding
+metadata:
+  name: read-pods
+  namespace: default
+subjects:
+# You can specify more than one "subject"
+- kind: User
+  name: paul.m@theband.io # "name" is case sensitive
+  apiGroup: rbac.authorization.k8s.io
+- kind: Group
+  name: admins@theband.io # "name" is case sensitive
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  # "roleRef" specifies the binding to a Role / ClusterRole
+  kind: Role #this must be Role or ClusterRole
+  name: pod-reader # this must match the name of the Role or ClusterRole you wish to bind to
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: read-secrets-global
+subjects:
+- kind: Group
+  name: manager 
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: secret-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+# This cluster role binding allows anyone in the "manager" group to read secrets in any namespace.
+kind: ClusterRoleBinding
+metadata:
+  name: read-secrets-global-upper
+subjects:
+- kind: Group
+  name: MANAGER 
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: secret-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: all-astrix
+rules:
+  - apiGroups:
+      - '*'
+    resources:
+      - '*'
+    verbs:
+      - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: all-astrix-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "john.l@theband.io"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: all-astrix  
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: view-all
+rules:
+  - apiGroups:
+      - 'rbac.authorization.k8s.io'
+    resources:
+      - '*'
+    verbs:
+      - 'get'
+      - 'list'
+      - 'update'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: view-all-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "john.l@theband.io"
+roleRef:
+  kind: Role
+  name: view-all
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  namespace: ns-risky
+  name: all-api-groups
+rules:
+  - apiGroups:
+      - '*'
+    resources:
+      - 'pods'
+    verbs:
+      - 'read'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: ns-risky
+  name: all-api-groups-roleBinding
+subjects:
+- kind: User
+  name: "john.l@theband.io"
+roleRef:
+  kind: ClusterRole
+  name: all-api-groups
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+# You need to already have a ClusterRole named "secret-reader".
+kind: RoleBinding
+metadata:
+  name: read-secrets
+  #
+  # The namespace of the RoleBinding determines where the permissions are granted.
+  # This only grants permissions within the "development" namespace.
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "john.l@theband.io"
+roleRef:
+  kind: ClusterRole
+  name: secret-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  namespace: ns-risky
+  name: create-services
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - 'services'
+    verbs:
+      - 'create'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: create-services-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "john.l@theband.io"
+roleRef:
+  kind: ClusterRole
+  name: create-services
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  namespace: ns-risky
+  name: list-secrets
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - 'secrets'
+      - 'configmaps'
+    resourceNames: 
+      - 'my-configmap'
+    verbs:
+      - 'list'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: list-secrets-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "john.l@theband.io"
+roleRef:
+  kind: ClusterRole
+  name: list-secrets
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: nonresourceurls-clusterrole
+rules:
+  - nonResourceURLs: 
+    - '/healthz'
+    - '/healthz/*'
+    verbs:
+      - 'get'
+      - 'post'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: nonresourceurls-clusterRoleBinding
+subjects:
+- kind: User
+  name: "john.l@theband.io"
+roleRef:
+  kind: ClusterRole
+  name: nonresourceurls-clusterrole
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: serviceaccounts-cluster-admin-e2e
+subjects:
+- kind: Group
+  name: system:serviceaccounts
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: get-secrets
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - 'secrets'
+    verbs:
+      - 'get,watch'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: get-secrets-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+roleRef:
+  kind: Role
+  name: get-secrets
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: create-secrets-pods
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - 'secrets'
+    verbs:
+      - 'get,list,create,delete,update'
+  - apiGroups:
+      - ''
+    resources:
+      - 'pods'
+    verbs:
+      - 'get,create,watch'
+  - apiGroups:
+      - 'certificates.k8s.io'
+    resources:
+      - 'signers'
+    verbs:
+      - 'sign'
+    resourceNames:
+      - 'kubernetes.io/kube-apiserver-client'
+      - 'kubernetes.io/kube-apiserver-client-kubelet'
+      - 'kubernetes.io/kubelet-serving'
+      - 'kubernetes.io/legacy-unknown'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: create-secrets-pods-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+roleRef:
+  kind: Role
+  name: create-secrets-pods
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: create-pods
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - 'pods'
+    verbs:
+      - 'create,delete,update'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: create-pods-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+roleRef:
+  kind: Role
+  name: create-pods
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: create-ingresses
+rules:
+  - apiGroups:
+      - 'networking.k8s.io'
+    resources:
+      - 'ingresses'
+    verbs:
+      - 'create,delete,update'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: create-ingresses-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+roleRef:
+  kind: Role
+  name: create-ingresses
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: read-all
+rules:
+  - apiGroups:
+      - '*'
+    resources:
+      - '*'
+    verbs:
+      - 'get,watch,list'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-all-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+roleRef:
+  kind: Role
+  name: read-all
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: impersonate-all
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - '*'
+    verbs:
+      - 'impersonate'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: impersonate-all-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+roleRef:
+  kind: Role
+  name: impersonate-all
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: impersonate-serviceaccount
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - 'serviceaccounts'
+    verbs:
+      - 'impersonate'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: impersonate-serviceaccount-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+roleRef:
+  kind: Role
+  name: impersonate-serviceaccount
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: impersonate-user
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - 'users'
+    verbs:
+      - 'impersonate'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: impersonate-user-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+- kind: Group
+  name: system:serviceaccounts:ns-risky
+  namespace: ns-risky
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: impersonate-user
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: update-configmaps
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - 'configmaps'
+    verbs:
+      - 'update,patch'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: update-configmaps-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+roleRef:
+  kind: Role
+  name: update-configmaps
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: create-networkpolicy
+rules:
+  - apiGroups:
+      - 'networking.k8s.io'
+    resources:
+      - 'networkpolicies'
+    verbs:
+      - 'create,update,delete'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: create-networkpolicy-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+roleRef:
+  kind: Role
+  name: create-networkpolicy
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: create-policy
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - 'policy'
+    verbs:
+      - 'create,update,delete'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: create-policy-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+roleRef:
+  kind: Role
+  name: create-policy
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: get-policy
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - 'policy'
+    verbs:
+      - 'get,watch,list'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: get-policy-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+roleRef:
+  kind: Role
+  name: get-policy
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  namespace: ns-risky
+  name: manage-clusterRole
+rules:
+  - apiGroups:
+      - 'rbac.authorization.k8s.io'
+    resources:
+      - 'clusterroles'
+    verbs:
+      - 'create,update,delete'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: manage-clusterRole-clusterroleBinding
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+roleRef:
+  kind: ClusterRole
+  name: manage-clusterRole
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: manage-role
+rules:
+  - apiGroups:
+      - 'rbac.authorization.k8s.io'
+    resources:
+      - 'roles'
+    verbs:
+      - 'create,update,delete'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: manage-role-roleBinding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+- kind: ServiceAccount
+  name: "default"
+  namespace: ns-risky
+roleRef:
+  kind: Role
+  name: manage-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  namespace: ns-risky
+  name: manage-clusterRoleBinding
+rules:
+  - apiGroups:
+      - 'rbac.authorization.k8s.io'
+    resources:
+      - 'clusterrolebindings'
+    verbs:
+      - 'create,update,delete'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: manage-clusterRoleBinding-binding
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+roleRef:
+  kind: ClusterRole
+  name: manage-clusterRoleBinding
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: manage-roleBinding
+rules:
+  - apiGroups:
+      - 'rbac.authorization.k8s.io'
+    resources:
+      - 'rolebindings'
+    verbs:
+      - 'create,update,delete'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: manage-rolebinding-binding
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+roleRef:
+  kind: Role
+  name: manage-roleBinding
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: manage-validatingwebhookconfiguration
+rules:
+  - apiGroups:
+      - 'admissionregistration.k8s.io'
+    resources:
+      - 'validatingwebhookconfigurations'
+    verbs:
+      - 'create,update,delete'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: manage-validatingwebhookconfiguration
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+roleRef:
+  kind: Role
+  name: manage-validatingwebhookconfiguration
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-risky
+  name: manage-mutatingwebhookconfiguration
+rules:
+  - apiGroups:
+      - 'admissionregistration.k8s.io'
+    resources:
+      - 'mutatingwebhookconfigurations'
+    verbs:
+      - 'create,update,delete'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: manage-mutatingwebhookconfiguration
+  namespace: ns-risky
+subjects:
+- kind: User
+  name: "george.h@theband.io"
+- kind: Group
+  name: system:authenticated
+  apiGroup: rbac.authorization.k8s.io
+- kind: Group
+  name: system:unauthenticated
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: manage-mutatingwebhookconfiguration
+  apiGroup: rbac.authorization.k8s.io
+---

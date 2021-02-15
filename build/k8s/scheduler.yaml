@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: scheduler
+  name: scheduler-deployment
+  namespace: apolicy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scheduler
+  template:
+    metadata:
+      labels:
+        app: scheduler
+    spec:
+      serviceAccountName: sa-apolicy
+      containers:
+        - name : scheduler
+          image: local/scheduler
+          ports:
+            - containerPort: 8083
+          envFrom:
+            - secretRef:
+                name: apolicy-secret
+          env:
+            - name: DB_NAME
+              value: schedule
+            - name: VALIDATION_EXCLUDE_PATTERNS
+              value: TaskTypeRepository.*,TaskRepository.FindPendingPublish,TaskRepository.FindById,ScheduleTaskRepository.FindOlderNextRun
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scheduler-service
+  namespace: apolicy
+spec:
+  type: NodePort
+  selector:
+    app: scheduler
+  ports:
+    - port: 8083
+      targetPort: 8083

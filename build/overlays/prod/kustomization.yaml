@@ -1,0 +1,118 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+bases:
+  - "../../k8s"
+
+resources:
+- secret-prod.yaml
+- ingress.yaml
+- volume.yaml
+
+# Patch to production images
+images:
+  - name: local/access
+    newName: gcr.io/kubetest-279110/access
+  - name: local/authentication
+    newName: gcr.io/kubetest-279110/authentication
+  - name: local/configuration
+    newName: gcr.io/kubetest-279110/configuration
+  - name: local/policy
+    newName: gcr.io/kubetest-279110/policy
+  - name: local/compliance
+    newName: gcr.io/kubetest-279110/compliance
+  - name: local/apolicy-kong
+    newName: gcr.io/kubetest-279110/apolicy-kong
+  - name: local/scheduler
+    newName: gcr.io/kubetest-279110/scheduler
+  - name: local/workload
+    newName: gcr.io/kubetest-279110/workload
+  - name: local/collector-handler
+    newName: gcr.io/kubetest-279110/collector-handler
+  - name: local/hosted-app
+    newName: gcr.io/kubetest-279110/hosted-app
+  - name: local/login-app
+    newName: gcr.io/kubetest-279110/login-app
+  - name: local/apolicy-app
+    newName: gcr.io/kubetest-279110/app
+  - name: local/gitprovider
+    newName: gcr.io/kubetest-279110/gitprovider
+  - name: local/remediation
+    newName: gcr.io/kubetest-279110/remediation
+  - name: local/clusteranalysis
+    newName: gcr.io/kubetest-279110/clusteranalysis
+
+# Patch replicas count
+replicas:
+- name: access-deployment
+  count: 2
+- name: authentication-deployment
+  count: 2
+- name: collector-handler-deployment
+  count: 2
+- name: compliance-deployment
+  count: 2
+- name: configuration-deployment
+  count: 2
+- name: policy-deployment
+  count: 2
+- name: workload-deployment
+  count: 2
+- name: scheduler-deployment
+  count: 2
+- name: clusteranalysis-deployment
+  count: 2
+
+# Add mysql proxy container
+patches:
+- path: sql-proxy-patch.yaml
+  target:
+    kind: Deployment
+    name: scheduler-deployment
+- path: sql-proxy-patch.yaml
+  target:
+    kind: Deployment
+    name: authentication-deployment
+- path: sql-proxy-patch.yaml
+  target:
+    kind: Deployment
+    name: configuration-deployment
+- path: sql-proxy-patch.yaml
+  target:
+    kind: Deployment
+    name: access-deployment
+- path: sql-proxy-patch.yaml
+  target:
+    kind: Deployment
+    name: policy-deployment
+- path: sql-proxy-patch.yaml
+  target:
+    kind: Deployment
+    name: compliance-deployment
+- path: sql-proxy-patch.yaml
+  target:
+    kind: Deployment
+    name: gitprovider-deployment
+- path: sql-proxy-patch.yaml
+  target:
+    kind: Deployment
+    name: remediation-deployment
+    
+# Patch LoadBalancer ip
+- path: kong-proxy-ip-patch.yaml
+  target:
+    kind: Service
+    name: kong-proxy
+    
+- path: deployment-patch.yaml
+  target:
+    kind: Deployment
+    
+- path: service-patch.yaml
+  target:
+    kind: Service
+
+# Patch Git Provider Service Webhooks URL
+- path: gitprovider-patch.yaml
+  target:
+    kind: Deployment
+    name: gitprovider-deployment

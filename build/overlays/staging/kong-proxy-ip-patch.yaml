@@ -1,0 +1,6 @@
+apiVersion: apps/v1
+kind: Service
+metadata:
+  name: kong-proxy
+spec:
+  loadBalancerIP: 35.226.198.36

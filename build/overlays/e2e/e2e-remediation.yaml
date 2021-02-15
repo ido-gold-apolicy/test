@@ -1,0 +1,207 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: demo-apolicy
+  namespace: demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: demo
+  name: secrets-reader
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-secrets-reader
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-read-secrets-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-secrets-reader
+subjects:
+  - kind: ServiceAccount
+    name: demo-apolicy
+    namespace: demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: demo
+  name: pods-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: demo
+  name: read-secrets-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: secrets-reader
+subjects:
+  - kind: ServiceAccount
+    name: demo-apolicy
+    namespace: demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: demo
+  name: read-pods-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pods-reader
+subjects:
+  - kind: ServiceAccount
+    name: demo-apolicy
+    namespace: demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: apolicy
+  name: pods-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: apolicy
+  name: read-pods
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pods-reader
+subjects:
+  - kind: ServiceAccount
+    name: demo-apolicy
+    namespace: demo
+  - kind: User
+    name: "fuad.fuad@airlines.io"
+    
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    apolicy.userremediation.exclude.role: "true"
+  namespace: demo
+  name: excluded-role
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: demo
+  name: excluded-role-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: excluded-role
+subjects:
+  - kind: ServiceAccount
+    name: demo-apolicy
+    namespace: demo
+    
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ns-sa-managed
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ns-sa-managed2
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-managed
+  namespace: ns-sa-managed
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    apolicy.managed: ns-sa-managed.sa-managed
+  name: apolicy:role:ns-sa-managed:sa-managed
+  namespace: ns-sa-managed
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - watch
+  - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    apolicy.managed: ns-sa-managed.sa-managed
+  name: apolicy:rolebinding:ns-sa-managed:sa-managed
+  namespace: ns-sa-managed
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: apolicy:role:ns-sa-managed:sa-managed
+subjects:
+- kind: ServiceAccount
+  name: sa-managed
+  namespace: ns-sa-managed
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ns-sa-managed2
+  name: pods-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: ns-sa-managed2
+  name: read-pods-sa-managed
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pods-reader
+subjects:
+  - kind: ServiceAccount
+    name: sa-managed
+    namespace: ns-sa-managed

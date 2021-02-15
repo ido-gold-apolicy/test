@@ -1,0 +1,12 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: configuration-deployment
+spec:
+  template:
+    spec:
+      containers:
+        - name : configuration
+          env:
+            - name: DEPLOYMENT_YAML_PUBLIC_URL
+              value: https://storage.googleapis.com/apolicy-deploy/apolicy-staging.yaml

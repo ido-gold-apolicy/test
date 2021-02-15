@@ -1,0 +1,5 @@
+Base yaml files for all the deployments based on mysql. Adds the sql-proxy sidecar required for the GCP Cloud Sql production environment
+
+To build:
+install kustomize (choco install kustomize)
+kustomize build . 

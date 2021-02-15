@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: clusteranalysis
+  name: clusteranalysis-deployment 
+  namespace: apolicy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: clusteranalysis
+  template:
+    metadata:
+      labels:
+        app: clusteranalysis
+    spec:
+      serviceAccountName: sa-apolicy
+      containers:
+        - name : clusteranalysis
+          image: local/clusteranalysis
+          ports:
+            - containerPort: 8090
+          envFrom:
+            - secretRef:
+                name: apolicy-secret   
+          env:
+            - name: DB_NAME
+              value: analysis
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clusteranalysis-service
+  namespace: apolicy
+spec:
+  type: NodePort
+  selector:
+    app: clusteranalysis
+  ports:
+    - port: 8090
+      targetPort: 8090

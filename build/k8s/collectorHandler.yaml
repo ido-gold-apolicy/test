@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: collector-handler
+  name: collector-handler-deployment
+  namespace: apolicy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: collector-handler
+  template:
+    metadata:
+      labels:
+        app: collector-handler
+    spec:
+      serviceAccountName: sa-apolicy
+      containers:
+        - name : collector-handler
+          image: local/collector-handler
+          ports:
+            - containerPort: 8085
+          envFrom:
+            - secretRef:
+                name: apolicy-secret           
+          env:
+            - name: LOG_LEVEL_TASK_SUBSCRIPTION
+              value: task-collector-log-level-sub
+            - name: COLLECTOR_LOGS_SUBSCRIPTION
+              value: collector-logs-sub
+            - name: COLLECTOR_PROFILING_SUBSCRIPTION
+              value: collector-profiling-sub
+            - name: PROFILING_RESULTS_BUCKET
+              value: apolicy-profiling
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector-handler-service
+  namespace: apolicy
+spec:
+  type: NodePort
+  selector:
+    app: collector-handler
+  ports:
+    - port: 8085
+      targetPort: 8085

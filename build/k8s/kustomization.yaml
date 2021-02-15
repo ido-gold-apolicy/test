@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- crd.yaml
+- kong.yaml
+- access.yaml
+- apolicy-app.yaml
+- authentication.yaml
+- collectorHandler.yaml
+- compliance.yaml
+- configuration.yaml
+- hosted-app.yaml
+- login-app.yaml
+- opa.yaml
+- plugin.yaml
+- policy.yaml
+- scheduler.yaml
+- tls-secret-local.yaml
+- workload.yaml
+- role.yaml
+- secret-gitprovider-dev.yaml
+- gitprovider.yaml
+- remediation.yaml
+- cluster-analysis.yaml

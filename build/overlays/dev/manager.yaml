@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: manager
+  name: manager-deployment 
+  namespace: apolicy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: manager
+  template:
+    metadata:
+      labels:
+        component: manager
+    spec:
+      serviceAccountName: apolicy-manager-admin
+      containers:
+        - name : manager
+          image: local/manager 
+          envFrom:
+            - secretRef:
+                name: apolicy-secret

@@ -1,0 +1,61 @@
+apiVersion: v1
+stringData:
+  algorithm: HS512
+  key: apolicy-authentication-service
+  kongCredType: jwt
+  secret: authentication-secret-password
+kind: Secret
+metadata:
+  name: apolicy-jwt
+  namespace: apolicy
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongConsumer
+metadata:
+  name: apolicy-app
+  namespace: apolicy
+username: apolicy-app
+credentials:
+  - apolicy-jwt
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: apolicy-jwt-plugin
+  namespace: apolicy
+plugin: jwt
+config:
+  claims_to_verify: ['exp']
+  run_on_preflight: false
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: apolicy-opa-plugin
+  namespace: apolicy
+config:
+  server:
+    host: opa-service
+  policy:
+    decision: httpapi/authz/allow
+plugin: opa
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: apolicy-ratelimit
+  namespace: apolicy
+config:
+  second: 1000
+  policy: local
+plugin: rate-limiting
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: apolicy-anonymous-ratelimit
+  namespace: apolicy
+config:
+  second: 100
+  policy: local
+plugin: rate-limiting

@@ -1,0 +1,475 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: e2e
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ns-risky
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ns-best
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: best-practice-service-account
+  namespace: ns-best
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: risky-secret
+type: Opaque
+stringData:
+  PASSWORD: "mypassword"
+  DB_URL: "url"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: risky-redis-deployment
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: web
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      automountServiceAccountToken: true
+      hostIPC: true
+      hostPID: true
+      hostNetwork: true
+      volumes:
+        - name: risky-volume
+          hostPath:
+            path: /var/run/docker.sock
+      serviceAccountName: default
+      securityContext:
+        runAsNonRoot: false
+        runAsGroup: 0
+      containers:
+        - name: risky-redis-container
+          securityContext:
+            capabilities:
+              add:
+                - SYS_ADMIN
+                - NET_ADMIN
+                - NET_RAW
+            runAsNonRoot: false
+            runAsGroup: 0
+            allowPrivilegeEscalation: true
+            readOnlyRootFilesystem: false
+            privileged: true
+          image: redis:latest
+          imagePullPolicy: Never
+          volumeMounts:
+            - name: risky-volume
+              mountPath: /mnt/risky
+              readOnly: false
+          ports:
+            - containerPort: 6379
+              name: redis
+              protocol: TCP
+              hostPort: 6379
+          env:
+            - name: MY_DB_PW
+              valueFrom:
+                secretKeyRef:
+                  name: risky-secret
+                  key: PASSWORD
+          envFrom:
+            - secretRef:
+                name: risky-secret
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: best-practice-redis-deployment
+  namespace: ns-best
+spec:
+  selector:
+    matchLabels:
+      app: web
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      automountServiceAccountToken: false
+      hostIPC: false
+      hostPID: false
+      volumes:
+        - name: etc-volume
+          hostPath:
+            path: /var/etc
+      serviceAccountName: ns-best
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 11003
+        runAsGroup: 11013
+      containers:
+        - name: best-redis-container
+          resources:
+            limits:
+              memory: "200Mi"
+              cpu: "1"
+            requests:
+              memory: "100Mi"
+              cpu: "0.5"
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - cat
+                - /tmp/healthy
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          securityContext:
+            capabilities:
+              drop:
+                - all
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 11004
+            runAsGroup: 11014
+            privileged: false
+          image: redis:alpine3.12
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: etc-volume
+              mountPath: /mnt/etc
+              readOnly: true
+          ports:
+            - containerPort: 6379
+              name: redis
+              protocol: TCP
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: jenkins
+  name: jenkins-deployment 
+  namespace: e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: jenkins
+  template:
+    metadata:
+      labels:
+        component: jenkins
+    spec:
+      containers:
+        - name : jenkins-container
+          image: jenkins/jenkins
+          ports:
+            - containerPort: 9006      
+          env:
+            - name: ENVIRONMENT
+              value: DEVELOPMENT
+            - name: DB_HOST
+              value: jenkins.test
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: ubuntu
+  name: ubuntu-deployment 
+  namespace: e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: ubuntu
+  template:
+    metadata:
+      labels:
+        component: ubuntu
+    spec:
+      containers:
+        - name : ubuntu-container
+          image: ubuntu/trusty
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: postgres
+  name: postgres-deployment 
+  namespace: e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: ubuntu
+  template:
+    metadata:
+      labels:
+        component: ubuntu
+    spec:
+      containers:
+        - name : ubuntu-container
+          image: ubuntu:trusty
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: orientdb
+  name: orientdb-deployment 
+  namespace: e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: orientdb
+  template:
+    metadata:
+      labels:
+        component: orientdb
+    spec:
+      containers:
+        - name : orientdb-container
+          image: orientdb
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: kubectl
+  name: kubectl-deployment 
+  namespace: e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: kubectl
+  template:
+    metadata:
+      labels:
+        component: kubectl
+    spec:
+      containers:
+        - name : kubectl-container
+          image: d3fk/kubectl
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: node
+  name: node-deployment 
+  namespace: e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: node
+  template:
+    metadata:
+      labels:
+        component: node
+    spec:
+      containers:
+        - name : node-container
+          image: node:latest
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: mariadb
+  name: mariadb-deployment 
+  namespace: e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: mariadb
+  template:
+    metadata:
+      labels:
+        component: mariadb
+    spec:
+      containers:
+        - name : mariadb-container
+          image: mariadb:latest   
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: alpine
+  name: alpine-deployment 
+  namespace: e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: alpine
+  template:
+    metadata:
+      labels:
+        component: alpine
+    spec:
+      serviceAccountName: default
+      containers:
+        - name : alpine-container
+          image: alpine:latest        
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: nginx
+  name: nginx-deployment 
+  namespace: e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: nginx
+  template:
+    metadata:
+      labels:
+        component: nginx
+    spec:
+      containers:
+        - name : nginx-container
+          image: nginx:latest  
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: rabbitmq
+  name: rabbitmq-deployment 
+  namespace: e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: rabbitmq
+  template:
+    metadata:
+      labels:
+        component: rabbitmq
+    spec:
+      containers:
+        - name : rabbitmq-container
+          image: rabbitmq:latest  
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: python
+  name: python-deployment 
+  namespace: e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: python
+  template:
+    metadata:
+      labels:
+        component: python
+    spec:
+      containers:
+        - name : python-container
+          image: python:latest  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: httpd
+  name: httpd-deployment 
+  namespace: e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: httpd
+  template:
+    metadata:
+      labels:
+        component: httpd
+    spec:
+      containers:
+        - name : httpd-container
+          image: httpd:alpine            
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: logstash
+  name: logstash-deployment 
+  namespace: e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: logstash
+  template:
+    metadata:
+      labels:
+        component: logstash
+    spec:
+      containers:
+        - name : logstash-container
+          image: logstash:latest    
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: tomcat
+  name: tomcat-deployment 
+  namespace: e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: tomcat
+  template:
+    metadata:
+      labels:
+        component: tomcat
+    spec:
+      containers:
+        - name : tomcat-container
+          image: tomcat:latest
+
