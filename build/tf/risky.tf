@@ -5,7 +5,7 @@ resource "kubernetes_deployment" "risky_redis_deployment" {
   }
 
   spec {
-    replicas = "1"
+    replicas = "2"
     
     selector {
       match_labels = {
